@@ -64,6 +64,12 @@ pub struct Card {
     card_type: CardType,
 }
 
+#[derive(Component)]
+pub struct CardFrontSprite;
+
+#[derive(Component)]
+pub struct CardBackSprite;
+
 fn spawn_card(
     mut commands: Commands,
     query: Query<(&CardSpawn, Entity)>,
@@ -71,24 +77,47 @@ fn spawn_card(
 ) {
     query.for_each(|(card_spawn, card_spawn_entity)| {
         let mut entity = commands.get_entity(card_spawn_entity).unwrap();
-        entity.insert((
-            SpriteBundle {
-                texture: sprite_assets.cards.clone(),
-                sprite: Sprite {
-                    rect: Some(if card_spawn.open {
-                        get_card_sprite_rect(card_spawn.card_type)
-                    } else {
-                        get_card_back_sprite_rect()
-                    }),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            Card {
+        entity
+            .remove::<CardSpawn>()
+            .insert(SpatialBundle::default())
+            .insert((Card {
                 open: card_spawn.open,
                 card_type: card_spawn.card_type,
-            },
-        ));
-        entity.remove::<CardSpawn>();
+            },))
+            .with_children(|parent| {
+                parent.spawn((
+                    SpriteBundle {
+                        texture: sprite_assets.cards.clone(),
+                        sprite: Sprite {
+                            rect: Some(get_card_sprite_rect(card_spawn.card_type)),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_scale(Vec3::new(
+                            if card_spawn.open { 1.0 } else { 0.0 },
+                            1.0,
+                            1.0,
+                        )),
+                        ..Default::default()
+                    },
+                    CardFrontSprite,
+                ));
+
+                parent.spawn((
+                    SpriteBundle {
+                        texture: sprite_assets.cards.clone(),
+                        sprite: Sprite {
+                            rect: Some(get_card_back_sprite_rect()),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_scale(Vec3::new(
+                            if !card_spawn.open { 1.0 } else { 0.0 },
+                            1.0,
+                            1.0,
+                        )),
+                        ..Default::default()
+                    },
+                    CardBackSprite,
+                ));
+            });
     });
 }
